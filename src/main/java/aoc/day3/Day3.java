@@ -2,13 +2,10 @@ package aoc.day3;
 
 import aoc.DailyExercise;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -54,7 +51,7 @@ public class Day3 implements DailyExercise {
     private List<String> getOnlyDo(String input) {
         List<String> validLines = new ArrayList<>();
         String[] splitByDo = input.split("do\\(\\)");
-        for (String line: splitByDo) {
+        for (String line : splitByDo) {
             String[] splitByDont = line.split("don't\\(\\)");
             validLines.add(splitByDont[0]);
         }

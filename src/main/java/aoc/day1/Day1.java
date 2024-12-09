@@ -51,6 +51,7 @@ public class Day1 implements DailyExercise {
 
     /**
      * The two list should be the same length and ordered
+     *
      * @param list1 First list
      * @param list2 Second list
      * @return The sum of difference between each element of the lists
