@@ -1,10 +1,10 @@
 package aoc;
 
-import aoc.day9.Day9;
+import aoc.day10.Day10;
 
 public class Main {
     public static void main(String[] args) {
-        DailyExercise todayExercise = new Day9();
+        DailyExercise todayExercise = new Day10();
 
         System.out.printf("First answer of today is : %s%n", todayExercise.getFirstAnswer());
         System.out.printf("Second answer of today is : %s%n", todayExercise.getSecondAnswer());
