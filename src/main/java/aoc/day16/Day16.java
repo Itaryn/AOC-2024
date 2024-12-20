@@ -11,11 +11,13 @@ import java.util.*;
 public class Day16 implements DailyExercise {
     private final static Map<String, Long> savedPosition = new HashMap<>();
 
-    private static void updateMaps(char[][] maze, Reindeer reindeer, Map<Reindeer, Long> alreadyCalculated, Map<Reindeer, Long> currentScores, Reindeer current, int score) {
+    private static void updateMaps(char[][] maze, Reindeer reindeer, List<Map.Entry<Reindeer, Path>> alreadyCalculated,
+                                   List<Map.Entry<Reindeer, Path>> currentScores, Map.Entry<Reindeer, Path> current, int score) {
         if (maze[reindeer.getPosition().getY()][reindeer.getPosition().getX()] != '#') {
-            if (!alreadyCalculated.containsKey(reindeer) || alreadyCalculated.get(reindeer) > currentScores.get(current) + score) {
-                alreadyCalculated.put(reindeer, currentScores.get(current) + score);
-                currentScores.put(reindeer, currentScores.get(current) + score);
+            Optional<Map.Entry<Reindeer, Path>> calculated = alreadyCalculated.stream().filter(c -> c.getKey().equals(reindeer)).findFirst();
+            if (calculated.isEmpty() || calculated.get().getValue().getScore() > current.getValue().getScore() + score) {
+                alreadyCalculated.add(Map.entry(reindeer, new Path(current.getValue().getScore() + score, reindeer.getValue().getPath())));
+                currentScores.add(Map.entry(reindeer, new Path(current.getValue().getScore() + score, reindeer.getValue().getPath())));
             }
         }
     }
@@ -43,50 +45,56 @@ public class Day16 implements DailyExercise {
         }
     }
 
-    private long aStar(char[][] maze, Reindeer start) {
-        Map<Reindeer, Long> currentScores = new HashMap<>();
-        Map<Reindeer, Long> alreadyCalculated = new HashMap<>();
-        currentScores.put(start, 0L);
+    private List<Path> aStar(char[][] maze, Reindeer start) {
+        List<Map.Entry<Reindeer, Path>> currentScores = new ArrayList<>();
+        List<Map.Entry<Reindeer, Path>> alreadyCalculated = new ArrayList<>();
+        List<Path> bestPaths = new ArrayList<>();
+        currentScores.add(Map.entry(start, new Path(0L, List.of())));
         while (!currentScores.isEmpty()) {
-            Reindeer current = Collections.min(currentScores.entrySet(), Comparator.comparingLong(Map.Entry::getValue)).getKey();
-            if (maze[current.getPosition().getY()][current.getPosition().getX()] == 'E') {
-                return currentScores.get(current);
-            }
-            Reindeer neighbourTop = new Reindeer(new Position(current.getPosition().getX(), current.getPosition().getY() - 1), Direction.TOP);
-            Reindeer neighbourRight = new Reindeer(new Position(current.getPosition().getX() + 1, current.getPosition().getY()), Direction.RIGHT);
-            Reindeer neighbourDown = new Reindeer(new Position(current.getPosition().getX(), current.getPosition().getY() + 1), Direction.DOWN);
-            Reindeer neighbourLeft = new Reindeer(new Position(current.getPosition().getX() - 1, current.getPosition().getY()), Direction.LEFT);
-            switch (current.getDirection()) {
-                case TOP -> {
-                    updateMaps(maze, neighbourTop, alreadyCalculated, currentScores, current, 1);
-                    updateMaps(maze, neighbourLeft, alreadyCalculated, currentScores, current, 1001);
-                    updateMaps(maze, neighbourRight, alreadyCalculated, currentScores, current, 1001);
+            System.out.println(currentScores.size());
+            currentScores.sort(Comparator.comparingLong(entry -> entry.getValue().getScore()));
+            Map.Entry<Reindeer, Path> current = currentScores.getFirst();
+            if (bestPaths.isEmpty() || current.getValue().getScore() <= bestPaths.getFirst().getScore()) {
+                if (maze[current.getKey().getPosition().getY()][current.getKey().getPosition().getX()] == 'E' && (bestPaths.isEmpty()
+                        || bestPaths.getFirst().getScore() == current.getValue().getScore())) {
+                    bestPaths.add(current.getValue());
                 }
-                case RIGHT -> {
-                    updateMaps(maze, neighbourRight, alreadyCalculated, currentScores, current, 1);
-                    updateMaps(maze, neighbourTop, alreadyCalculated, currentScores, current, 1001);
-                    updateMaps(maze, neighbourDown, alreadyCalculated, currentScores, current, 1001);
-                }
-                case DOWN -> {
-                    updateMaps(maze, neighbourDown, alreadyCalculated, currentScores, current, 1);
-                    updateMaps(maze, neighbourLeft, alreadyCalculated, currentScores, current, 1001);
-                    updateMaps(maze, neighbourRight, alreadyCalculated, currentScores, current, 1001);
-                }
-                case LEFT -> {
-                    updateMaps(maze, neighbourLeft, alreadyCalculated, currentScores, current, 1);
-                    updateMaps(maze, neighbourTop, alreadyCalculated, currentScores, current, 1001);
-                    updateMaps(maze, neighbourDown, alreadyCalculated, currentScores, current, 1001);
+                Reindeer neighbourTop = new Reindeer(new Position(current.getKey().getPosition().getX(), current.getKey().getPosition().getY() - 1), Direction.TOP);
+                Reindeer neighbourRight = new Reindeer(new Position(current.getKey().getPosition().getX() + 1, current.getKey().getPosition().getY()), Direction.RIGHT);
+                Reindeer neighbourDown = new Reindeer(new Position(current.getKey().getPosition().getX(), current.getKey().getPosition().getY() + 1), Direction.DOWN);
+                Reindeer neighbourLeft = new Reindeer(new Position(current.getKey().getPosition().getX() - 1, current.getKey().getPosition().getY()), Direction.LEFT);
+                switch (current.getKey().getDirection()) {
+                    case TOP -> {
+                        updateMaps(maze, neighbourTop, alreadyCalculated, currentScores, current, 1);
+                        updateMaps(maze, neighbourLeft, alreadyCalculated, currentScores, current, 1001);
+                        updateMaps(maze, neighbourRight, alreadyCalculated, currentScores, current, 1001);
+                    }
+                    case RIGHT -> {
+                        updateMaps(maze, neighbourRight, alreadyCalculated, currentScores, current, 1);
+                        updateMaps(maze, neighbourTop, alreadyCalculated, currentScores, current, 1001);
+                        updateMaps(maze, neighbourDown, alreadyCalculated, currentScores, current, 1001);
+                    }
+                    case DOWN -> {
+                        updateMaps(maze, neighbourDown, alreadyCalculated, currentScores, current, 1);
+                        updateMaps(maze, neighbourLeft, alreadyCalculated, currentScores, current, 1001);
+                        updateMaps(maze, neighbourRight, alreadyCalculated, currentScores, current, 1001);
+                    }
+                    case LEFT -> {
+                        updateMaps(maze, neighbourLeft, alreadyCalculated, currentScores, current, 1);
+                        updateMaps(maze, neighbourTop, alreadyCalculated, currentScores, current, 1001);
+                        updateMaps(maze, neighbourDown, alreadyCalculated, currentScores, current, 1001);
+                    }
                 }
             }
             currentScores.remove(current);
         }
-        return -1;
+        return bestPaths;
     }
 
     @Override
     public String getFirstAnswer() {
         Input input = getInput();
-        return Long.toString(aStar(input.getMaze(), input.getReindeer()));
+        return Long.toString(aStar(input.getMaze(), input.getReindeer()).getFirst().getScore());
     }
 
     @Override
