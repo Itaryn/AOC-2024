@@ -9,21 +9,28 @@ import java.io.InputStreamReader;
 import java.util.*;
 
 public class Day16 implements DailyExercise {
-    private final static Map<String, Long> savedPosition = new HashMap<>();
+    private List<Path> result;
 
     private static void updateMaps(char[][] maze, Reindeer reindeer, List<Map.Entry<Reindeer, Path>> alreadyCalculated,
                                    List<Map.Entry<Reindeer, Path>> currentScores, Map.Entry<Reindeer, Path> current, int score) {
         if (maze[reindeer.getPosition().getY()][reindeer.getPosition().getX()] != '#') {
-            Optional<Map.Entry<Reindeer, Path>> calculated = alreadyCalculated.stream().filter(c -> c.getKey().equals(reindeer)).findFirst();
+            Optional<Map.Entry<Reindeer, Path>> calculated = alreadyCalculated.stream()
+                    .filter(c -> c.getKey().equals(reindeer))
+                    .findFirst();
+            List<Position> path = new ArrayList<>(current.getValue().getPath());
+            path.add(reindeer.getPosition());
             if (calculated.isEmpty() || calculated.get().getValue().getScore() > current.getValue().getScore() + score) {
-                alreadyCalculated.add(Map.entry(reindeer, new Path(current.getValue().getScore() + score, reindeer.getValue().getPath())));
-                currentScores.add(Map.entry(reindeer, new Path(current.getValue().getScore() + score, reindeer.getValue().getPath())));
+                calculated.ifPresent(alreadyCalculated::remove);
+                alreadyCalculated.add(Map.entry(reindeer, new Path(current.getValue().getScore() + score, List.of())));
+                currentScores.add(Map.entry(reindeer, new Path(current.getValue().getScore() + score, path)));
+            } else if (calculated.get().getValue().getScore() == current.getValue().getScore() + score) {
+                alreadyCalculated.add(Map.entry(reindeer, new Path(current.getValue().getScore() + score, path)));
             }
         }
     }
 
-    private Input getInput() {
-        try (InputStream inputStream = this.getClass().getResourceAsStream("/input_day16.txt");
+    protected Input getInput(String path) {
+        try (InputStream inputStream = this.getClass().getResourceAsStream(path);
              BufferedReader reader = new BufferedReader(new InputStreamReader(Objects.requireNonNull(inputStream)))) {
             String line;
             Reindeer reindeer = null;
@@ -45,19 +52,22 @@ public class Day16 implements DailyExercise {
         }
     }
 
-    private List<Path> aStar(char[][] maze, Reindeer start) {
+    protected List<Path> getShortestPaths(char[][] maze, Reindeer start) {
         List<Map.Entry<Reindeer, Path>> currentScores = new ArrayList<>();
         List<Map.Entry<Reindeer, Path>> alreadyCalculated = new ArrayList<>();
         List<Path> bestPaths = new ArrayList<>();
-        currentScores.add(Map.entry(start, new Path(0L, List.of())));
+        currentScores.add(Map.entry(start, new Path(0L, List.of(start.getPosition()))));
         while (!currentScores.isEmpty()) {
-            System.out.println(currentScores.size());
             currentScores.sort(Comparator.comparingLong(entry -> entry.getValue().getScore()));
             Map.Entry<Reindeer, Path> current = currentScores.getFirst();
             if (bestPaths.isEmpty() || current.getValue().getScore() <= bestPaths.getFirst().getScore()) {
                 if (maze[current.getKey().getPosition().getY()][current.getKey().getPosition().getX()] == 'E' && (bestPaths.isEmpty()
                         || bestPaths.getFirst().getScore() == current.getValue().getScore())) {
                     bestPaths.add(current.getValue());
+                    Set<Position> checkedPositions = new HashSet<>();
+                    for (Position position : current.getValue().getPath().subList(1, current.getValue().getPath().size())) {
+                        addOtherPaths(checkedPositions, position, bestPaths, alreadyCalculated);
+                    }
                 }
                 Reindeer neighbourTop = new Reindeer(new Position(current.getKey().getPosition().getX(), current.getKey().getPosition().getY() - 1), Direction.TOP);
                 Reindeer neighbourRight = new Reindeer(new Position(current.getKey().getPosition().getX() + 1, current.getKey().getPosition().getY()), Direction.RIGHT);
@@ -91,14 +101,31 @@ public class Day16 implements DailyExercise {
         return bestPaths;
     }
 
+    private void addOtherPaths(Set<Position> checkedPositions, Position position, List<Path> bestPaths, List<Map.Entry<Reindeer, Path>> alreadyCalculated) {
+        if (!checkedPositions.contains(position)) {
+            checkedPositions.add(position);
+            List<Path> otherPaths = alreadyCalculated.stream()
+                    .filter(calc -> calc.getKey().getPosition().equals(position))
+                    .map(Map.Entry::getValue).toList();
+            long minScore = otherPaths.stream().min(Comparator.comparingLong(Path::getScore)).get().getScore();
+            List<Path> minPaths = otherPaths.stream().filter(path -> path.getScore() == minScore).toList();
+            if (minPaths.size() > 1) {
+                bestPaths.addAll(minPaths);
+                minPaths.stream().flatMap(path -> path.getPath().stream()).distinct()
+                        .forEach(pos -> addOtherPaths(checkedPositions, pos, bestPaths, alreadyCalculated));
+            }
+        }
+    }
+
     @Override
     public String getFirstAnswer() {
-        Input input = getInput();
-        return Long.toString(aStar(input.getMaze(), input.getReindeer()).getFirst().getScore());
+        Input input = getInput("/input_day16.txt");
+        result = getShortestPaths(input.getMaze(), input.getReindeer());
+        return Long.toString(result.getFirst().getScore());
     }
 
     @Override
     public String getSecondAnswer() {
-        return "";
+        return Long.toString(result.stream().flatMap(path -> path.getPath().stream()).distinct().count());
     }
 }
